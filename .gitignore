@@ -1,0 +1,42 @@
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- IDE ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+
+# ---------- Rust ----------
+target/
+
+# ---------- Node / 前端 ----------
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ---------- Python ----------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# ---------- Java ----------
+*.class
+out/
+hs_err_pid*
+
+# ---------- 环境变量与日志 ----------
+.env.local
+*.log
+
+# ---------- 构建产物 ----------
+build/

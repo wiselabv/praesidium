@@ -1,0 +1,23 @@
+[package]
+name = "praesidium-core"
+version = "0.1.0"
+edition = "2024"
+description = "Praesidium core proxy - SSH/RDP/VNC bastion proxy, command audit, session recording"
+license = "Apache-2.0"
+
+[[bin]]
+name = "praesidium"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+axum = { version = "0.8.9", features = ["ws"] }
+futures-util = "0.3.34"
+# TODO(SSH 里程碑): 恢复 russh。需先准备 C 工具链（MSVC 的 cl.exe 或 w64devkit + GNU 目标）；
+# 建议用 ring 后端，避免 aws-lc-sys 对 CMake/NASM 的依赖：
+# russh = { version = "0.63.3", default-features = false, features = ["ring", "flate2", "rsa"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["full"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
