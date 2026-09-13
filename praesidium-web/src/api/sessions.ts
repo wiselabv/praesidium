@@ -27,6 +27,8 @@ export interface RecordingItem {
   startedAt: string
   durationSeconds: number
   sizeBytes: number
+  /** 录像切片对象 key（逗号分隔，网关上报） */
+  path?: string
 }
 
 /** 发起连接请求（对应 ConnectRequest） */
@@ -34,6 +36,19 @@ export interface ConnectRequest {
   assetId: number
   accountId?: number | null
   protocol: string
+}
+
+/** 发起连接响应（对应 ConnectResponse）：会话 + 网关令牌 + 网关地址 */
+export interface ConnectResponse {
+  session: SessionItem
+  gatewayToken: string
+  gatewayUrl: string
+}
+
+/** 录像切片对象（MinIO 预签名 URL） */
+export interface RecordingObjectItem {
+  key: string
+  url: string
 }
 
 /** 分页查询会话（status 传 online/closed 等过滤） */
@@ -56,9 +71,9 @@ export function disconnectSession(id: number): Promise<SessionItem> {
   return request<SessionItem>(`/api/sessions/${id}/disconnect`, { method: 'POST' })
 }
 
-/** 发起连接（演示网关：创建一条在线会话记录） */
-export function connectSession(payload: ConnectRequest): Promise<SessionItem> {
-  return request<SessionItem>('/api/sessions/connect', { method: 'POST', body: JSON.stringify(payload) })
+/** 发起连接（创建在线会话 + 签发网关令牌，前端携令牌连 Rust 网关） */
+export function connectSession(payload: ConnectRequest): Promise<ConnectResponse> {
+  return request<ConnectResponse>('/api/sessions/connect', { method: 'POST', body: JSON.stringify(payload) })
 }
 
 /** 会话录像分页 */
@@ -72,4 +87,9 @@ export function listRecordings(params: {
   if (params.size !== undefined) query.set('size', String(params.size))
   if (params.keyword) query.set('keyword', params.keyword)
   return request<PageData<RecordingItem>>(`/api/sessions/recordings?${query.toString()}`)
+}
+
+/** 录像切片对象（MinIO 预签名 URL 列表，回放/下载用） */
+export function listRecordingObjects(id: number): Promise<RecordingObjectItem[]> {
+  return request<RecordingObjectItem[]>(`/api/sessions/recordings/${id}/objects`)
 }

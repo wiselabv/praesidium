@@ -1,8 +1,12 @@
 package io.github.wiselabv.praesidium.admin.sessions.api;
 
+import java.util.List;
+
 import io.github.wiselabv.praesidium.admin.sessions.application.SessionService;
 import io.github.wiselabv.praesidium.admin.sessions.application.dto.ConnectRequest;
+import io.github.wiselabv.praesidium.admin.sessions.application.dto.ConnectResponse;
 import io.github.wiselabv.praesidium.admin.sessions.application.dto.RecordingItem;
+import io.github.wiselabv.praesidium.admin.sessions.application.dto.RecordingObjectItem;
 import io.github.wiselabv.praesidium.admin.sessions.application.dto.SessionItem;
 import io.github.wiselabv.praesidium.admin.shared.api.ApiResponse;
 import io.github.wiselabv.praesidium.admin.shared.api.PageResponse;
@@ -45,11 +49,11 @@ public class SessionController {
         return ApiResponse.ok(sessionService.disconnect(id));
     }
 
-    /** 发起连接（演示网关） */
+    /** 发起连接（签发网关令牌，前端携令牌连 Rust 网关） */
     @PostMapping("/connect")
-    public ApiResponse<SessionItem> connect(@Valid @RequestBody ConnectRequest request,
-                                            Authentication authentication,
-                                            HttpServletRequest http) {
+    public ApiResponse<ConnectResponse> connect(@Valid @RequestBody ConnectRequest request,
+                                                Authentication authentication,
+                                                HttpServletRequest http) {
         return ApiResponse.ok(sessionService.connect(request,
                 (Long) authentication.getPrincipal(), clientIp(http)));
     }
@@ -61,6 +65,12 @@ public class SessionController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword) {
         return ApiResponse.ok(sessionService.recordings(keyword, page, size));
+    }
+
+    /** 录像切片对象（MinIO 预签名 URL，回放/下载用） */
+    @GetMapping("/recordings/{id}/objects")
+    public ApiResponse<List<RecordingObjectItem>> recordingObjects(@PathVariable Long id) {
+        return ApiResponse.ok(sessionService.recordingObjects(id));
     }
 
     private String clientIp(HttpServletRequest request) {

@@ -21,6 +21,9 @@
     </licenses>
     <properties>
         <java.version>25</java.version>
+        <!-- 与 Spring Boot 4.1.1 BOM 管理的 grpc 版本一致，避免 core/api 与 netty 混搭导致 AbstractMethodError -->
+        <grpc.version>1.83.1</grpc.version>
+        <protobuf.version>4.31.0</protobuf.version>
     </properties>
     <dependencies>
         <dependency>
@@ -87,6 +90,34 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- 审计事件总线：RabbitMQ（Rust 网关发布，Java 落库） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- gRPC 策略下发：Java（server）→ Rust 网关（client） -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+
         <!-- 测试：内存库 H2（test scope） -->
         <dependency>
             <groupId>com.h2database</groupId>
@@ -102,7 +133,34 @@
     </dependencies>
 
     <build>
+        <extensions>
+            <!-- os-maven-plugin：为 protobuf 插件提供平台分类器（os.detected.classifier） -->
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.1</version>
+            </extension>
+        </extensions>
         <plugins>
+            <!-- proto 编译：src/main/proto → 生成 Java（protobuf + gRPC stub） -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <pluginId>grpc-java</pluginId>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>compile-custom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

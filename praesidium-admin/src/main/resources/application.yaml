@@ -16,6 +16,12 @@ spring:
       ddl-auto: validate
   flyway:
     locations: classpath:db/migration
+  # 审计事件总线：Rust 网关发布 → Java 落库（凭据经环境变量注入）
+  rabbitmq:
+    host: ${PRAESIDIUM_AMQP_HOST:192.168.10.4}
+    port: ${PRAESIDIUM_AMQP_PORT:5672}
+    username: ${PRAESIDIUM_AMQP_USERNAME:admin}
+    password: ${PRAESIDIUM_AMQP_PASSWORD:}
 
 server:
   port: 8080
@@ -30,3 +36,24 @@ praesidium:
     cors-origins: ${PRAESIDIUM_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://localhost:5176}
     # 敏感内容加密密钥（凭据/SSO client secret）；生产必须经 PRAESIDIUM_SECRET_KEY 覆盖
     secret-key: ${PRAESIDIUM_SECRET_KEY:praesidium-dev-only-cipher-key-change-me-0123456789}
+  # 网关接入：浏览器 WS 地址下发 + 内网共享密钥（Rust 网关拉连接信息用）
+  gateway:
+    url: ${PRAESIDIUM_GATEWAY_URL:ws://127.0.0.1:8081}
+  internal:
+    # 内网接口共享密钥：Rust 网关携带 X-Internal-Key 拉取解密凭据；生产必须覆盖
+    key: ${PRAESIDIUM_INTERNAL_KEY:praesidium-dev-internal-key}
+  # 策略下发 gRPC 服务器
+  grpc:
+    enabled: ${PRAESIDIUM_GRPC_ENABLED:true}
+    port: ${PRAESIDIUM_GRPC_PORT:9090}
+  # 审计事件总线命名
+  audit:
+    exchange: ${PRAESIDIUM_AUDIT_EXCHANGE:praesidium.audit}
+    java-queue: ${PRAESIDIUM_AUDIT_JAVA_QUEUE:praesidium.java.audit}
+  # 录像对象存储（MinIO）：Rust 网关上传统一桶，Java 签发预签名 URL 供前端回放/下载
+  minio:
+    endpoint: ${PRAESIDIUM_MINIO_ENDPOINT:http://192.168.10.4:9000}
+    access-key: ${PRAESIDIUM_MINIO_ACCESS_KEY:minio}
+    # 密钥为真实凭据，经环境变量注入（与 DB 密码同源），不落 yaml 默认值
+    secret-key: ${PRAESIDIUM_MINIO_SECRET_KEY:}
+    bucket: ${PRAESIDIUM_MINIO_BUCKET:praesidium-recordings}

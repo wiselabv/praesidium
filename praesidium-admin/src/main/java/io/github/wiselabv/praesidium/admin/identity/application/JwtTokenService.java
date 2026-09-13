@@ -29,16 +29,20 @@ public class JwtTokenService {
 
     private static final String CLAIM_STEP = "step";
     private static final String CLAIM_USERNAME = "username";
+    private static final String CLAIM_SESSION_ID = "session_id";
+    private static final String CLAIM_USER_ID = "user_id";
     private static final String STEP_MFA = "mfa";
 
     private final SecretKey key;
     private final long accessTtlMillis;
     private final long sessionTtlMillis;
+    private final long gatewayTtlMillis;
 
     public JwtTokenService(JwtProperties properties) {
         this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
         this.accessTtlMillis = properties.getAccessTtlMinutes() * 60_000;
         this.sessionTtlMillis = properties.getSessionTtlMinutes() * 60_000;
+        this.gatewayTtlMillis = properties.getGatewayTtlMinutes() * 60_000;
     }
 
     /** 签发访问令牌 */
@@ -61,6 +65,24 @@ public class JwtTokenService {
                 .claim(CLAIM_STEP, STEP_MFA)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + sessionTtlMillis))
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * 签发网关令牌：浏览器 → Rust 网关建 SSH 会话的一次性凭证。
+     *
+     * <p>claim 约定（Rust 侧 {@code GatewayClaims} 验签）：
+     * {@code session_id}、{@code user_id}、{@code sub=userId}、{@code exp}。
+     */
+    public String issueGatewayToken(Long sessionId, Long userId) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim(CLAIM_SESSION_ID, sessionId)
+                .claim(CLAIM_USER_ID, userId)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + gatewayTtlMillis))
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }

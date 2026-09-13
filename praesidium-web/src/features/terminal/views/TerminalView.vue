@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import XtermTerminal from '../../../components/XtermTerminal.vue'
-import { useAuthStore } from '../../../stores/auth'
 import { connectSession, disconnectSession } from '../../../api/sessions'
 import type { SessionItem } from '../../../api/sessions'
 import { listAssetAccounts, listAssets } from '../../../api/assets'
@@ -14,11 +13,10 @@ import type { AssetAccountItem } from '../../../api/accounts'
  * Web 终端工作台（L4）。
  *
  * 会话模块入口：选择资产 → 账号 → 协议 → 发起连接 → 全屏终端交互。
- * 资产/账号下拉与连接/断开已接真实接口（POST /api/sessions/connect 创建在线会话、
- * POST /api/sessions/{id}/disconnect 断开）；终端区在 SSH 网关代理就绪前保持 mock 回显模式。
+ * connect 返回网关令牌与网关地址，终端组件经 WebSocket 连 Rust 网关（auth/input/resize 帧），
+ * 输出为 SSH 目标终端的真实回显。
  */
 
-const auth = useAuthStore()
 const route = useRoute()
 
 const PROTOCOL_OPTIONS = ['SSH', 'RDP', 'VNC', 'MySQL', 'Redis']
@@ -90,10 +88,13 @@ onMounted(loadAssets)
 const sessionState = ref<'idle' | 'connecting' | 'connected'>('idle')
 /** 当前会话信息 */
 const session = ref<SessionItem | null>(null)
+/** 网关令牌与地址（connect 响应下发，供终端组件建 WS） */
+const gatewayToken = ref('')
+const gatewayUrl = ref('')
 const elapsed = ref(0)
 let timer: number | null = null
 
-/** 发起连接（真实创建在线会话，终端仍为 mock 回显） */
+/** 发起连接（创建在线会话 + 签发网关令牌，终端连真实 SSH 网关） */
 async function handleConnect() {
   if (form.value.assetId === undefined) {
     Message.warning('请选择资产')
@@ -106,13 +107,15 @@ async function handleConnect() {
       accountId: form.value.accountId ?? null,
       protocol: form.value.protocol,
     })
-    session.value = created
+    session.value = created.session
+    gatewayToken.value = created.gatewayToken
+    gatewayUrl.value = created.gatewayUrl
     sessionState.value = 'connected'
     elapsed.value = 0
     timer = window.setInterval(() => {
       elapsed.value += 1
     }, 1000)
-    Message.success(`已连接 ${created.asset}（${created.account} · ${created.protocol}）`)
+    Message.success(`已连接 ${created.session.asset}（${created.session.account} · ${created.session.protocol}）`)
   } catch (error) {
     sessionState.value = 'idle'
     Message.error(error instanceof Error ? error.message : '发起会话失败')
@@ -138,7 +141,7 @@ async function handleDisconnect() {
   }
 }
 
-/** 终端 mock 退出（输入 exit）时复位 */
+/** 终端退出（真实模式由 WS 关闭驱动，此处复位会话状态） */
 function handleTerminalExit() {
   handleDisconnect()
 }
@@ -152,11 +155,15 @@ function formatElapsed(seconds: number): string {
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
-// 开发环境经 Vite 代理（/ws → Rust 核心代理）；生产环境通过 VITE_WS_BASE 指定网关。
-const wsBase =
-  import.meta.env.VITE_WS_BASE ||
-  `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-const wsUrl = `${wsBase}/ws/terminal`
+/** 终端 WS 地址：优先用 connect 响应的网关地址，回退同源代理（/ws → Rust 核心代理） */
+const wsUrl = computed(() => {
+  if (gatewayUrl.value) {
+    return `${gatewayUrl.value}/ws/terminal`
+  }
+  const fallback = import.meta.env.VITE_WS_BASE ||
+    `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
+  return `${fallback}/ws/terminal`
+})
 
 onBeforeUnmount(() => {
   if (timer !== null) window.clearInterval(timer)
@@ -229,16 +236,12 @@ onBeforeUnmount(() => {
         <icon-code-square class="empty-icon" />
         <p class="empty-title">尚未建立会话</p>
         <p class="empty-tip">在上方选择目标资产与账号后点击「连接」发起会话</p>
-        <p class="empty-tip">（SSH 网关代理开发中，当前为 mock 回显模式）</p>
       </div>
       <XtermTerminal
         v-else
         :key="session ? `${session.id}-live` : 'term'"
         :ws-url="wsUrl"
-        :token="auth.accessToken"
-        :mock="true"
-        :mock-user="session?.account"
-        :mock-host="session?.asset"
+        :token="gatewayToken"
         @exit="handleTerminalExit"
       />
     </div>

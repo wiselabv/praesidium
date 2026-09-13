@@ -66,6 +66,8 @@ public final class ApiErrorCode {
     // ---------- 3xxx 访问控制 ----------
     /** 授权策略不存在 */
     public static final int POLICY_NOT_FOUND = 3001;
+    /** 无该资产的访问授权策略（建连被拒） */
+    public static final int POLICY_DENIED = 3002;
 
     // ---------- 4xxx 审计 ----------
     /** 审计日志不存在 */

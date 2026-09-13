@@ -20,6 +20,9 @@ public class JwtProperties {
     /** 登录会话令牌（密码通过后待 MFA 阶段）有效期（分钟） */
     private long sessionTtlMinutes = 5;
 
+    /** 网关令牌有效期（分钟）：浏览器持令牌连 Rust 网关建 SSH 会话 */
+    private long gatewayTtlMinutes = 480;
+
     /** 刷新令牌有效期（天） */
     private long refreshTtlDays = 7;
 
@@ -45,6 +48,14 @@ public class JwtProperties {
 
     public void setSessionTtlMinutes(long sessionTtlMinutes) {
         this.sessionTtlMinutes = sessionTtlMinutes;
+    }
+
+    public long getGatewayTtlMinutes() {
+        return gatewayTtlMinutes;
+    }
+
+    public void setGatewayTtlMinutes(long gatewayTtlMinutes) {
+        this.gatewayTtlMinutes = gatewayTtlMinutes;
     }
 
     public long getRefreshTtlDays() {

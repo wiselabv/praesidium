@@ -70,6 +70,15 @@ public class AccessPolicyRepositoryJpa implements AccessPolicyRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<AccessPolicy> findByStatus(String status) {
+        return entityManager.createQuery(
+                        "select p from AccessPolicy p where p.status = :status order by p.id", AccessPolicy.class)
+                .setParameter("status", status)
+                .getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countAll() {
         return entityManager.createQuery("select count(p) from AccessPolicy p", Long.class).getSingleResult();
     }

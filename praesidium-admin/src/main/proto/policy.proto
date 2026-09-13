@@ -1,0 +1,44 @@
+// 授权策略下发协议：Java 管理服务（server）→ Rust 核心代理（client）。
+// Rust 建连前在本机内存策略表中校验，无需回源查询数据库。
+syntax = "proto3";
+
+package praesidium.policy.v1;
+
+option java_package = "io.github.wiselabv.praesidium.admin.access.grpc";
+option java_outer_classname = "PolicyProto";
+
+// Java 管理服务（server）→ Rust 核心代理（client）策略流
+service PolicyService {
+  // Rust 启动后建立长连接：先全量（since_version=0）后增量
+  rpc StreamPolicies(StreamRequest) returns (stream PolicyEvent);
+}
+
+message StreamRequest {
+  // Rust 本地已知的最新版本号；0 表示需要全量推送
+  int64 since_version = 1;
+}
+
+message PolicyEvent {
+  // upsert（新增/更新，整体替换该 id 的策略）| remove（按 id 删除）
+  string action = 1;
+  Policy policy = 2;
+  // 事件版本号（Java 侧单调递增，Rust 用于断线重连续传）
+  int64 version = 3;
+}
+
+message Policy {
+  int64 id = 1;
+  string name = 2;
+  int64 user_id = 3;
+  // 空列表 = 不限资产
+  repeated int64 asset_ids = 4;
+  // 空列表 = 不限账号
+  repeated int64 account_ids = 5;
+  // 空串 = 不限协议
+  string protocol = 6;
+  // ISO 日期 yyyy-MM-dd，空串 = 不限
+  string valid_from = 7;
+  string valid_to = 8;
+  // pending | active | revoked
+  string status = 9;
+}

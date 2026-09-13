@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
-import { listRecordings } from '../../../api/sessions'
+import { listRecordings, listRecordingObjects } from '../../../api/sessions'
 import type { RecordingItem } from '../../../api/sessions'
+import RecordingPlayer from '../components/RecordingPlayer.vue'
 
 /**
  * 录像回放页（L4）。
  *
  * 会话模块之二：已结束会话的操作录像（堡垒机合规审计的核心证据）。
- * 回放播放器依赖网关的录像流协议，为后续里程碑；先提供列表与下载占位。
+ * 回放：拉取 MinIO 预签名切片 URL，按 0.cast → 1.cast … 顺序渲染进 xterm 只读终端；
+ * 下载：顺序拉取全部切片合并为单个 .cast 文件触发浏览器保存。
  * 数据源 GET /api/sessions/recordings（后端只回已生成录像的 ended 会话）。
  */
 
@@ -86,14 +88,44 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleString('zh-CN', { hour12: false })
 }
 
-/** 回放（占位，依赖网关录像流协议，后续里程碑接入） */
+/** 回放弹窗状态 */
+const playerVisible = ref(false)
+const playerRecording = ref<RecordingItem | null>(null)
+const downloading = ref(false)
+
+/** 回放：弹出播放器，逐片拉取预签名 URL 渲染 */
 function handlePlay(recording: RecordingItem) {
-  Message.info(`录像 #${recording.id} 的播放器将在录像流协议接入后开放`)
+  playerRecording.value = recording
+  playerVisible.value = true
 }
 
-/** 下载录像文件（占位，依赖录像文件服务） */
-function handleDownload(recording: RecordingItem) {
-  Message.info(`录像 #${recording.id} 的下载将在录像文件服务接入后开放`)
+/** 下载：顺序拉取全部切片合并为单个 .cast 文件 */
+async function handleDownload(recording: RecordingItem) {
+  downloading.value = true
+  try {
+    const objects = await listRecordingObjects(recording.id)
+    if (objects.length === 0) {
+      Message.warning('该会话暂无录像切片')
+      return
+    }
+    const chunks: BlobPart[] = []
+    for (const object of objects) {
+      const res = await fetch(object.url)
+      if (!res.ok) throw new Error(`切片 ${object.key} 拉取失败（HTTP ${res.status}）`)
+      chunks.push(await res.blob())
+    }
+    const blob = new Blob(chunks, { type: 'application/octet-stream' })
+    const anchor = document.createElement('a')
+    anchor.href = URL.createObjectURL(blob)
+    anchor.download = `session-${recording.sessionId}-recording.cast`
+    anchor.click()
+    URL.revokeObjectURL(anchor.href)
+    Message.success(`已下载 ${objects.length} 个切片（${formatSize(blob.size)}）`)
+  } catch (error) {
+    Message.error(error instanceof Error ? error.message : '录像下载失败')
+  } finally {
+    downloading.value = false
+  }
 }
 
 /** 删除录像（高危操作，二次确认） */
@@ -185,7 +217,7 @@ function handleDelete(recording: RecordingItem) {
             <template #cell="{ record }">
               <a-space :wrap="true">
                 <a-link @click="handlePlay(record)">回放</a-link>
-                <a-link @click="handleDownload(record)">下载</a-link>
+                <a-link :loading="downloading" @click="handleDownload(record)">下载</a-link>
                 <a-link status="danger" @click="handleDelete(record)">删除</a-link>
               </a-space>
             </template>
@@ -193,6 +225,18 @@ function handleDelete(recording: RecordingItem) {
         </template>
       </a-table>
     </a-card>
+
+    <!-- 回放弹窗 -->
+    <a-modal
+      v-model:visible="playerVisible"
+      :title="playerRecording ? `录像回放 #${playerRecording.id} · ${playerRecording.user} @ ${playerRecording.asset}` : '录像回放'"
+      :width="960"
+      :footer="false"
+      :mask-closable="false"
+      unmount-on-close
+    >
+      <RecordingPlayer v-if="playerVisible && playerRecording" :recording="playerRecording" />
+    </a-modal>
   </div>
 </template>
 

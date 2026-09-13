@@ -93,7 +93,7 @@ onMounted(async () => {
       accountId: null,
       protocol: target.protocol,
     })
-    sessionId.value = created.id
+    sessionId.value = created.session.id
   } catch (error) {
     Message.error(error instanceof Error ? error.message : '创建访问会话失败')
   }

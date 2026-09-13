@@ -19,7 +19,9 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class SettingsService {
 
-    /** 允许的分组白名单，与种子数据保持一致 */
+    /**
+     * 允许的分组白名单，与种子数据保持一致
+     */
     public static final Set<String> SECTIONS = Set.of("basic", "security", "notify", "auth", "storage");
 
     private final SettingRepository settingRepository;
@@ -30,7 +32,11 @@ public class SettingsService {
         this.objectMapper = objectMapper;
     }
 
-    /** 全部分组配置：section -> JSON 对象 */
+    /**
+     * 全部分组配置：section -> JSON 对象
+     *
+     * @return
+     */
     @Transactional(readOnly = true)
     public Map<String, JsonNode> all() {
         Map<String, JsonNode> result = new LinkedHashMap<>();
@@ -40,13 +46,24 @@ public class SettingsService {
         return result;
     }
 
-    /** 单分组配置 */
+    /**
+     * 单分组配置
+     *
+     * @param section
+     * @return
+     */
     @Transactional(readOnly = true)
     public JsonNode get(String section) {
         return parse(requireSection(section));
     }
 
-    /** 保存单分组配置（整体替换） */
+    /**
+     * 保存单分组配置（整体替换）
+     *
+     * @param section
+     * @param config
+     * @return
+     */
     @Transactional
     public JsonNode update(String section, JsonNode config) {
         if (config == null || !config.isObject()) {

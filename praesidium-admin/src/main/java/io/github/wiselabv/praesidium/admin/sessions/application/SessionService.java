@@ -8,21 +8,26 @@ import io.github.wiselabv.praesidium.admin.asset.domain.AssetAccountRepository;
 import io.github.wiselabv.praesidium.admin.asset.domain.AssetRepository;
 import io.github.wiselabv.praesidium.admin.asset.domain.model.Asset;
 import io.github.wiselabv.praesidium.admin.asset.domain.model.AssetAccount;
+import io.github.wiselabv.praesidium.admin.identity.application.JwtTokenService;
 import io.github.wiselabv.praesidium.admin.identity.domain.UserRepository;
 import io.github.wiselabv.praesidium.admin.identity.domain.model.User;
 import io.github.wiselabv.praesidium.admin.sessions.application.dto.ConnectRequest;
+import io.github.wiselabv.praesidium.admin.sessions.application.dto.ConnectResponse;
 import io.github.wiselabv.praesidium.admin.sessions.application.dto.RecordingItem;
+import io.github.wiselabv.praesidium.admin.sessions.application.dto.RecordingObjectItem;
 import io.github.wiselabv.praesidium.admin.sessions.application.dto.SessionItem;
 import io.github.wiselabv.praesidium.admin.sessions.domain.SessionRepository;
 import io.github.wiselabv.praesidium.admin.sessions.domain.model.Session;
+import io.github.wiselabv.praesidium.admin.sessions.infrastructure.MinioPresigner;
 import io.github.wiselabv.praesidium.admin.shared.api.ApiErrorCode;
 import io.github.wiselabv.praesidium.admin.shared.api.BizException;
 import io.github.wiselabv.praesidium.admin.shared.api.PageResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 会话应用服务：在线会话查询/断开、发起连接（演示网关）、录像查询。
+ * 会话应用服务：在线会话查询/断开、发起连接（签发网关令牌）、录像查询。
  */
 @Service
 public class SessionService {
@@ -31,15 +36,24 @@ public class SessionService {
     private final UserRepository userRepository;
     private final AssetRepository assetRepository;
     private final AssetAccountRepository accountRepository;
+    private final JwtTokenService jwtTokenService;
+    private final MinioPresigner minioPresigner;
+    private final String gatewayUrl;
 
     public SessionService(SessionRepository sessionRepository,
                           UserRepository userRepository,
                           AssetRepository assetRepository,
-                          AssetAccountRepository accountRepository) {
+                          AssetAccountRepository accountRepository,
+                          JwtTokenService jwtTokenService,
+                          MinioPresigner minioPresigner,
+                          @Value("${praesidium.gateway.url:ws://127.0.0.1:8081}") String gatewayUrl) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.assetRepository = assetRepository;
         this.accountRepository = accountRepository;
+        this.jwtTokenService = jwtTokenService;
+        this.minioPresigner = minioPresigner;
+        this.gatewayUrl = gatewayUrl;
     }
 
     @Transactional(readOnly = true)
@@ -68,9 +82,9 @@ public class SessionService {
         return toItem(session);
     }
 
-    /** 发起连接：创建在线会话（网关接入前为演示直连） */
+    /** 发起连接：创建在线会话并签发网关令牌（浏览器 → Rust 网关建连） */
     @Transactional
-    public SessionItem connect(ConnectRequest request, Long userId, String sourceIp) {
+    public ConnectResponse connect(ConnectRequest request, Long userId, String sourceIp) {
         Asset asset = assetRepository.findById(request.assetId())
                 .orElseThrow(() -> new BizException(ApiErrorCode.ASSET_NOT_FOUND, "资产不存在"));
         if (request.accountId() != null) {
@@ -83,7 +97,8 @@ public class SessionService {
         Session session = Session.connect(userId, request.assetId(), request.accountId(),
                 request.protocol().trim(), sourceIp);
         sessionRepository.save(session);
-        return toItem(session);
+        String token = jwtTokenService.issueGatewayToken(session.getId(), userId);
+        return ConnectResponse.of(session, toItem(session), token, gatewayUrl);
     }
 
     /** 录像分页（已结束且有录像的会话） */
@@ -101,6 +116,25 @@ public class SessionService {
                 .map(s -> RecordingItem.of(s, userNames.get(s.getUserId()), assetNames.get(s.getAssetId())))
                 .toList();
         return PageResponse.of(items, total, page, size);
+    }
+
+    /** 录像切片对象：recordingPath 逐个签发 MinIO 预签名下载 URL（回放/下载用） */
+    @Transactional(readOnly = true)
+    public List<RecordingObjectItem> recordingObjects(Long id) {
+        Session session = sessionRepository.findById(id)
+                .orElseThrow(() -> new BizException(ApiErrorCode.SESSION_NOT_FOUND, "会话不存在"));
+        String path = session.getRecordingPath();
+        if (path == null || path.isBlank()) {
+            return List.of();
+        }
+        List<RecordingObjectItem> objects = new java.util.ArrayList<>();
+        for (String key : path.split(",")) {
+            String trimmed = key.trim();
+            if (!trimmed.isEmpty()) {
+                objects.add(new RecordingObjectItem(trimmed, minioPresigner.presignGet(trimmed)));
+            }
+        }
+        return objects;
     }
 
     private List<SessionItem> toItems(List<Session> sessions) {

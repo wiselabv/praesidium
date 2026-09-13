@@ -21,6 +21,9 @@ public interface AccessPolicyRepository {
 
     long countPage(String keyword, String status);
 
+    /** 按状态全量查询（策略下发全量兜底用） */
+    List<AccessPolicy> findByStatus(String status);
+
     long countAll();
 
     long countByStatus(String status);

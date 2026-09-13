@@ -58,6 +58,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login/**", "/api/auth/sso/**", "/api/auth/refresh", "/api/auth/logout", "/error").permitAll()
+                        // 内网接口不走用户 JWT，由 InternalSessionController 校验 X-Internal-Key
+                        .requestMatchers("/api/internal/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex

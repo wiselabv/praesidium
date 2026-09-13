@@ -11,12 +11,24 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.104"
+async-trait = "0.1"
 axum = { version = "0.8.9", features = ["ws"] }
+chrono = { version = "0.4", features = ["serde"] }
 futures-util = "0.3.34"
+jsonwebtoken = "9"
+lapin = "2"
+prost = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # ring 后端：避免 aws-lc-sys 对 CMake/NASM 的依赖；flate2 压缩、rsa 密钥支持
 russh = { version = "0.63.3", default-features = false, features = ["ring", "flate2", "rsa"] }
+rust-s3 = { version = "0.35", default-features = false, features = ["tokio-rustls-tls", "fail-on-err"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
+tonic = { version = "0.14", features = ["transport"] }
+tonic-prost = "0.14"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[build-dependencies]
+tonic-prost-build = "0.14"

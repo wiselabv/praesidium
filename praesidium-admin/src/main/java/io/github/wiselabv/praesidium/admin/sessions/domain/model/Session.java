@@ -78,6 +78,13 @@ public class Session {
         this.endedAt = Instant.now();
     }
 
+    /** 追加录像切片索引（网关逐片上报）：路径逗号拼接，大小累加 */
+    public void appendRecording(String objectKey, long sizeBytes) {
+        this.recordingPath = (recordingPath == null || recordingPath.isBlank())
+                ? objectKey : recordingPath + "," + objectKey;
+        this.recordingSizeBytes = (recordingSizeBytes == null ? 0 : recordingSizeBytes) + sizeBytes;
+    }
+
     public Long getId() {
         return id;
     }
