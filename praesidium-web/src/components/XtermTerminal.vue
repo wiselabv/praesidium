@@ -11,12 +11,25 @@ import '@xterm/xterm/css/xterm.css'
  * 与 Rust 核心代理的 WebSocket 约定：
  * - 客户端 → 服务端：JSON 帧 `{ type: 'auth' | 'input' | 'resize', ... }`
  * - 服务端 → 客户端：终端输出文本（直接写入 xterm）
+ *
+ * mock 模式：网关未就绪时的本地回显演示，不建 WebSocket，模拟基础 shell
+ * （help / pwd / whoami / ls / uptime / df / free / exit，其余提示 command not found）。
  */
 const props = defineProps<{
   /** WebSocket 地址，如 ws://127.0.0.1:8081/ws/terminal */
   wsUrl: string
   /** 可选：Java 签发的访问令牌，连接建立后作为首条消息发送 */
   token?: string
+  /** mock 模式：不连 WS，本地模拟 shell（网关未就绪时的开发演示） */
+  mock?: boolean
+  /** mock 模式下模拟的目标环境（真实实现由网关注入） */
+  mockUser?: string
+  mockHost?: string
+}>()
+
+const emit = defineEmits<{
+  /** mock shell 收到 exit 时触发（真实模式由 WS 关闭驱动） */
+  (e: 'exit'): void
 }>()
 
 const container = ref<HTMLDivElement | null>(null)
@@ -39,7 +52,7 @@ function fitAndNotify() {
   } catch {
     // 容器尚未完成布局时忽略本次尺寸调整
   }
-  if (term) {
+  if (term && !props.mock) {
     send({ type: 'resize', cols: term.cols, rows: term.rows })
   }
 }
@@ -70,6 +83,96 @@ function connect() {
   }
 }
 
+/* ---------------- mock shell ---------------- */
+
+/** 行编辑缓冲 */
+let lineBuffer = ''
+
+function mockBanner() {
+  const user = props.mockUser ?? 'deploy'
+  const host = props.mockHost ?? 'asset'
+  term?.writeln('\x1b[1;36m  Praesidium 终端（mock 回显模式）\x1b[0m')
+  term?.writeln(`\x1b[90m  已建立到 \x1b[0m${host}\x1b[90m 的会话，SSH 网关代理开发中。\x1b[0m`)
+  term?.write('\r\n')
+  mockPrompt(user, host)
+}
+
+function mockPrompt(user: string, host: string) {
+  term?.write(`\x1b[32m${user}@${host}\x1b[0m:\x1b[34m~\x1b[0m$ `)
+}
+
+/** 模拟命令输出 */
+function mockExecute(cmd: string) {
+  const user = props.mockUser ?? 'deploy'
+  const host = props.mockHost ?? 'asset'
+  const trimmed = cmd.trim()
+  if (!trimmed) {
+    mockPrompt(user, host)
+    return
+  }
+  term?.write('\r\n')
+  const [head] = trimmed.split(/\s+/)
+  switch (head) {
+    case 'help':
+      term?.writeln('可用命令：help / pwd / whoami / ls / uptime / df -h / free -m / exit')
+      break
+    case 'exit':
+    case 'logout':
+      term?.writeln('logout')
+      emit('exit')
+      return
+    case 'pwd':
+      term?.writeln(`/home/${user}`)
+      break
+    case 'whoami':
+      term?.writeln(user)
+      break
+    case 'ls':
+      term?.writeln('app  backup  logs  nginx.conf  .bashrc')
+      break
+    case 'uptime':
+      term?.writeln(' 10:52:33 up 42 days,  3:17,  1 user,  load average: 0.08, 0.12, 0.09')
+      break
+    case 'df':
+      term?.writeln('Filesystem     1K-blocks     Used Available Use% Mounted on')
+      term?.writeln('/dev/vda1       51475068 18330224  30497288  38% /')
+      break
+    case 'free':
+      term?.writeln('              total        used        free      shared  buff/cache   available')
+      term?.writeln('Mem:        8167884     2213696     4021028      192884     1933160     5461988')
+      break
+    default:
+      term?.writeln(`bash: ${head}: command not found`)
+  }
+  mockPrompt(user, host)
+}
+
+function handleMockData(data: string) {
+  for (const ch of data) {
+    if (ch === '\r') {
+      term?.write('\r\n')
+      mockExecute(lineBuffer)
+      lineBuffer = ''
+    } else if (ch === '\x7f') {
+      // Backspace
+      if (lineBuffer.length > 0) {
+        lineBuffer = lineBuffer.slice(0, -1)
+        term?.write('\b \b')
+      }
+    } else if (ch === '\x03') {
+      // Ctrl+C
+      term?.write('^C\r\n')
+      lineBuffer = ''
+      mockPrompt(props.mockUser ?? 'deploy', props.mockHost ?? 'asset')
+    } else {
+      lineBuffer += ch
+      term?.write(ch)
+    }
+  }
+}
+
+/* ---------------- lifecycle ---------------- */
+
 onMounted(() => {
   term = new Terminal({
     cursorBlink: true,
@@ -92,10 +195,19 @@ onMounted(() => {
   }
 
   term.onData((data) => {
+    if (props.mock) {
+      handleMockData(data)
+      return
+    }
     send({ type: 'input', data })
   })
 
-  connect()
+  if (props.mock) {
+    status.value = 'connected'
+    mockBanner()
+  } else {
+    connect()
+  }
 
   resizeObserver = new ResizeObserver(() => fitAndNotify())
   if (container.value) {
@@ -115,6 +227,7 @@ onBeforeUnmount(() => {
 watch(
   () => props.wsUrl,
   () => {
+    if (props.mock) return
     socket?.close()
     connect()
   },

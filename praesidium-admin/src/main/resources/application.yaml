@@ -1,3 +1,32 @@
 spring:
   application:
     name: praesidium-admin
+  # 数据源：连接凭据经环境变量注入（PRAESIDIUM_DB_*），yaml 不落库敏感信息
+  datasource:
+    url: ${PRAESIDIUM_DB_URL:jdbc:postgresql://192.168.10.4:5432/praesidium}
+    username: ${PRAESIDIUM_DB_USERNAME:praesidium}
+    password: ${PRAESIDIUM_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 5000
+  jpa:
+    # schema 由 Flyway 管理，Hibernate 只做校验，杜绝隐式 DDL
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+# 业务配置（环境变量前缀 PRAESIDIUM_，见 docs/ARCHITECTURE.md）
+praesidium:
+  security:
+    jwt:
+      # 演示密钥仅限本地开发；生产必须经 PRAESIDIUM_JWT_SECRET 覆盖（HS256 ≥ 32 字节）
+      secret: ${PRAESIDIUM_JWT_SECRET:praesidium-dev-only-secret-change-me-in-production-0123456789}
+    # 允许跨域的前端源（逗号分隔）；dev 端口变化时经 PRAESIDIUM_CORS_ORIGINS 覆盖
+    cors-origins: ${PRAESIDIUM_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://localhost:5176}
+    # 敏感内容加密密钥（凭据/SSO client secret）；生产必须经 PRAESIDIUM_SECRET_KEY 覆盖
+    secret-key: ${PRAESIDIUM_SECRET_KEY:praesidium-dev-only-cipher-key-change-me-0123456789}

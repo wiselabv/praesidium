@@ -26,6 +26,15 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://praesidium:praesidium@127.0.0.1:5432/praesidium"
     )
 
+    # 审计事件队列（RabbitMQ，AMQP 协议）
+    amqp_url: str = "amqp://admin:admin@127.0.0.1:5672/%2F"
+
+    # 会话录像对象存储（MinIO，S3 兼容）
+    minio_endpoint: str = "127.0.0.1:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "praesidium-recordings"
+
 
 @lru_cache
 def get_settings() -> Settings:

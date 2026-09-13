@@ -1,0 +1,46 @@
+/* ============================================================
+ * 全局重置与基础样式 —— 只消费 tokens.css 中的变量
+ * ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page-bg);
+  color: var(--color-text-1);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  /* 等宽数字：IP / 时间 / 计数 / 端口全部对齐 */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/* 细滚动条：侧边栏 / 内容区统一 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,154 @@
+/* ============================================================
+ * 设计语言层（Design Tokens）—— 全站唯一视觉源头
+ *
+ * 规则：所有样式只消费这里的变量，禁止在任何组件中硬编码色值/圆角/间距。
+ * 结构：
+ *   1. 品牌与功能色    2. 布局与文字色    3. 圆角 / 间距
+ *   4. 字体与字号      5. Arco 组件变量映射（运行时主题）
+ * ============================================================ */
+
+:root {
+  /* ---------- 1. 品牌与功能色 ---------- */
+  --color-primary: #2f6bff;
+  --color-primary-hover: #5e8aff;
+  --color-primary-active: #1f4fd9;
+  --color-success: #20c683;
+  --color-warning: #ff9a3c;
+  --color-danger: #ef4444;
+  --color-info: #22b8cf;
+
+  /* ---------- 2. 布局与文字色 ---------- */
+  --color-sidebar-bg: #243049;
+  --color-sidebar-text: rgba(255, 255, 255, 0.65);
+  --color-sidebar-text-active: #ffffff;
+  --color-sidebar-group-title: rgba(255, 255, 255, 0.35);
+  --color-sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --color-sidebar-divider: rgba(255, 255, 255, 0.08);
+  --color-page-bg: #eef4fa;
+  --color-card-bg: #ffffff;
+  --color-table-header: #f7faff;
+  --color-border: #e5eaf2;
+  --color-terminal-bg: #121a2b;
+
+  /* 文字色阶（1 主 / 2 次 / 3 辅助 / 4 禁用） */
+  --color-text-1: #1d2129;
+  --color-text-2: #4e5969;
+  --color-text-3: #86909c;
+  --color-text-4: #c9cdd4;
+
+  /* ---------- 3. 圆角 ---------- */
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  --radius-round: 50%;
+
+  /* ---------- 4. 间距 ---------- */
+  --spacing-page: 16px;
+  --spacing-card: 12px;
+  --spacing-row: 8px;
+  --spacing-xs: 4px;
+  --spacing-xl: 24px;
+
+  /* ---------- 5. 字体与字号 ---------- */
+  --font-family-base:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+
+  /* ---------- 6. Arco 组件变量映射（运行时主题） ----------
+   * Arco 预编译 CSS 通过 var() 消费这些变量，覆盖后全局组件自动换肤。
+   * 色阶约定：1-4 = 浅色背景（hover 行/选中底/浅标签），5 = hover，6 = 主色，7 = active。
+   */
+  --primary-1: #eaf1ff;
+  --primary-2: #d6e4ff;
+  --primary-3: #adc8ff;
+  --primary-4: #85abff;
+  --primary-5: var(--color-primary-hover);
+  --primary-6: var(--color-primary);
+  --primary-7: var(--color-primary-active);
+  --green-6: var(--color-success);
+  --orange-6: var(--color-warning);
+  --red-6: var(--color-danger);
+  --cyan-6: var(--color-info);
+  --border-radius-small: var(--radius-sm);
+  --border-radius-medium: var(--radius-md);
+  --border-radius-large: var(--radius-lg);
+
+  /* ---------- 7. 布局与组件尺寸 ---------- */
+  --layout-sidebar-width: 220px;
+  --layout-sidebar-collapsed: 48px;
+  --layout-header-height: 48px;
+  --layout-footer-height: 24px;
+  --size-menu-item: 40px;
+  --size-header-icon: 28px;
+  --size-avatar: 28px;
+  --size-logo-icon: 22px;
+  --size-icon-md: 16px;
+  --size-status-dot: 8px;
+
+  /* ---------- 8. 动效时长 ---------- */
+  --duration-fast: 0.15s;
+  --duration-base: 0.2s;
+
+  /* ---------- 9. 阴影 ---------- */
+  --shadow-card: 0 2px 8px rgba(29, 33, 41, 0.06);
+  --shadow-dropdown: 0 4px 16px rgba(29, 33, 41, 0.08);
+
+  /* ---------- 10. 品牌与登录页专属 ---------- */
+  --font-size-xxl: 24px;
+  --font-size-xxxl: 32px;
+  --font-weight-semibold: 600;
+  --line-height-tight: 1;
+  --line-height-relaxed: 1.4;
+  --font-family-mono: 'Cascadia Code', Consolas, monospace;
+  --letter-spacing-code: 1px;
+  --size-mfa-panel: 96px;
+  --size-brand-icon: 36px;
+  --size-login-card: 400px;
+  --size-form-card: 360px;
+  --size-otp-cell: 40px;
+  --size-qr: 160px;
+  --size-profile-tabs: 480px;
+  --size-password-form: 400px;
+  --size-avatar-lg: 48px;
+  --size-modal-md: 400px;
+  --size-modal-lg: 480px;
+  --login-card-padding: 40px 36px 24px;
+  --login-brand-gap: 28px;
+  --brand-panel-width: 42%;
+  --brand-panel-padding: 0 48px;
+
+  /* ---------- 11. 分屏登录页（960×520 品牌分屏卡片） ---------- */
+  --color-brand-navy: #14284f; /* 左区深海军蓝背景 */
+  --color-brand-text: #ffffff; /* 左区主文字 */
+  --color-brand-text-soft: rgba(255, 255, 255, 0.65); /* 左区辅助文字 */
+  --color-brand-mark-bg: rgba(255, 255, 255, 0.12); /* 品牌标识方块底色 */
+  --color-brand-deco: rgba(255, 255, 255, 0.05); /* 左区圆形暗纹 */
+  --color-input-bg: #f2f4f8; /* 登录输入框浅灰填充 */
+  --radius-auth-card: 16px;
+  --size-auth-card-w: 1280px;
+  --size-auth-card-h: 693px;
+  --size-auth-form-w: 400px;
+  --size-auth-input-h: 44px;
+  --size-auth-button-h: 44px;
+  --size-brand-mark: 48px;
+  --size-brand-feature-dot: 6px;
+  --font-size-auth-brand: 36px; /* 左区主标题 */
+  --line-height-feature: 28px; /* 特性列表行高 */
+  --shadow-auth-card: 0 12px 40px rgba(29, 41, 67, 0.12); /* 卡片柔和下沉阴影 */
+  /* 动态渐变背景：紫 → 粉 → 蓝 */
+  --color-auth-grad-purple: #e9d5ff; /* 渐变基底紫（柔和） */
+  --color-auth-grad-pink: #fbcfe8; /* 渐变基底粉（柔和） */
+  --color-auth-grad-blue: #bfdbfe; /* 渐变基底蓝（柔和） */
+  --color-auth-orb-purple: rgba(168, 85, 247, 0.35); /* 漂浮光斑紫 */
+  --color-auth-orb-pink: rgba(236, 72, 153, 0.32); /* 漂浮光斑粉 */
+  --color-auth-orb-blue: rgba(59, 130, 246, 0.35); /* 漂浮光斑蓝 */
+}
